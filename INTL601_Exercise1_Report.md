@@ -77,8 +77,8 @@ Two-sample t-test: *t* = 4.689, *p* < 0.001
 
 ### OLS Regression: `reg Y T`
 
-| Variable | Coef | Std Err | t | P>|t| | 95% CI |
-|----------|------|---------|---|-------|--------|
+| Variable | Coef | Std Err | t | p-value | 95% CI |
+|----------|------|---------|---|---------|--------|
 | Intercept | 0.4931*** | 0.0100 | 49.142 | < 0.001 | [0.4734, 0.5128] |
 | T | 0.0661*** | 0.0141 | 4.689 | < 0.001 | [0.0385, 0.0937] |
 
@@ -110,8 +110,8 @@ Using `margins at(T=(0 1))` (equivalent in Python: predicted values from the OLS
 
 ### Regression: `reg Y T age educ pastvote party_id competitive`
 
-| Variable | Coef | Std Err | t | P>|t| | 95% CI |
-|----------|------|---------|---|-------|--------|
+| Variable | Coef | Std Err | t | p-value | 95% CI |
+|----------|------|---------|---|---------|--------|
 | Intercept | -0.1011 | 0.0534 | -1.893 | 0.058 | [-0.2059, 0.0036] |
 | T | 0.0575*** | 0.0132 | 4.348 | < 0.001 | [0.0316, 0.0834] |
 | age | 0.0044*** | 0.0006 | 8.006 | < 0.001 | [0.0033, 0.0055] |
@@ -189,8 +189,8 @@ This involves **three equations**:
 
 *Does random assignment (Z) actually increase contact (T)?*
 
-| Variable | Coef | Std Err | t | P>|t| | 95% CI |
-|----------|------|---------|---|-------|--------|
+| Variable | Coef | Std Err | t | p-value | 95% CI |
+|----------|------|---------|---|---------|--------|
 | Intercept | 0.1038* | 0.0517 | 2.009 | 0.045 | [0.0025, 0.2051] |
 | Z | 0.4369*** | 0.0126 | 34.564 | < 0.001 | [0.4121, 0.4616] |
 | age | 0.0031*** | 0.0005 | 5.817 | < 0.001 | [0.0020, 0.0041] |
@@ -210,8 +210,8 @@ This involves **three equations**:
 
 *What is the causal effect of being **assigned** (regardless of actual contact)?*
 
-| Variable | Coef | Std Err | t | P>|t| | 95% CI |
-|----------|------|---------|---|-------|--------|
+| Variable | Coef | Std Err | t | p-value | 95% CI |
+|----------|------|---------|---|---------|--------|
 | Intercept | -0.0875 | 0.0539 | -1.624 | 0.104 | [-0.1931, 0.0181] |
 | Z | 0.0118 | 0.0132 | 0.893 | 0.372 | [-0.0141, 0.0376] |
 | age | 0.0046*** | 0.0006 | 8.341 | < 0.001 | [0.0035, 0.0057] |
@@ -298,8 +298,8 @@ T_target rate: **43.1%**
 
 **Without controls** (`reg Y T_target`):
 
-| Variable | Coef | Std Err | t | P>|t| | 95% CI |
-|----------|------|---------|---|-------|--------|
+| Variable | Coef | Std Err | t | p-value | 95% CI |
+|----------|------|---------|---|---------|--------|
 | Intercept | 0.4822*** | 0.0093 | 51.778 | < 0.001 | [0.4640, 0.5005] |
 | T_target | 0.1029*** | 0.0142 | 7.253 | < 0.001 | [0.0751, 0.1307] |
 
@@ -307,8 +307,8 @@ T_target rate: **43.1%**
 
 **With controls** (`reg Y T_target + age educ pastvote party_id competitive`):
 
-| Variable | Coef | Std Err | t | P>|t| | 95% CI |
-|----------|------|---------|---|-------|--------|
+| Variable | Coef | Std Err | t | p-value | 95% CI |
+|----------|------|---------|---|---------|--------|
 | Intercept | -0.0779 | 0.0534 | -1.457 | 0.145 | [-0.1826, 0.0269] |
 | T_target | -0.0128 | 0.0142 | -0.900 | 0.368 | [-0.0406, 0.0151] |
 | age | 0.0046*** | 0.0006 | 8.362 | < 0.001 | [0.0035, 0.0057] |

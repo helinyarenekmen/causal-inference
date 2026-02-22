@@ -557,8 +557,8 @@ def stars(p):
     return ""
 
 def reg_table_md(model, title=""):
-    rows = ["| Variable | Coef | Std Err | t | P>|t| | 95% CI |",
-            "|----------|------|---------|---|-------|--------|"]
+    rows = ["| Variable | Coef | Std Err | t | p-value | 95% CI |",
+            "|----------|------|---------|---|---------|--------|"]
     ci = model.conf_int()
     for var in model.params.index:
         c = model.params[var]
