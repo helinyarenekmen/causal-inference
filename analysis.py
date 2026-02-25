@@ -510,13 +510,10 @@ for bar, v in zip(bars2, b_vals):
     ax2.text(bar.get_x()+bar.get_width()/2, bar.get_height()+0.004,
              f'β = {v:.4f}', ha='center', fontweight='bold', fontsize=10)
 ax2.set_ylabel('Coefficient on Treatment')
-ax2.set_ylim(0, max(b_vals)*1.35)
+ax2.set_ylim(min(0, min(b_vals))*1.5, max(b_vals)*1.35)
 ax2.set_title('Panel B: Bias Comparison\n(Experimental vs. Targeted)')
 
-# Panel C: Confounding heat map — Turnout by pastvote × treatment
-for col_idx, (treat_var, title) in enumerate([('T', 'T (experimental)'), ('T_target', 'T_target (targeted)')]):
-    ax3 = axes[2]
-# Use a grouped bar chart instead
+# Panel C: Turnout by pastvote x T_target (grouped bar chart)
 pv0_T0  = df.loc[(df['pastvote']==0)&(df['T_target']==0), 'Y'].mean()*100
 pv0_T1  = df.loc[(df['pastvote']==0)&(df['T_target']==1), 'Y'].mean()*100
 pv1_T0  = df.loc[(df['pastvote']==1)&(df['T_target']==0), 'Y'].mean()*100
@@ -577,343 +574,209 @@ print("\n=== All computations done. Writing markdown... ===")
 # ─────────────────────────────────────────────────────────────────────────────
 # WRITE MARKDOWN REPORT
 # ─────────────────────────────────────────────────────────────────────────────
-md = f"""# INTL 601 Research Methods I — Exercise \\#1
-## Voter Mobilization Field Experiment: Complete Analysis
+md = f"""# INTL 601 Research Methods I - Exercise #1
+## Voter Mobilization Field Experiment
 
 ---
 
-## Table of Contents
-1. [Data Overview & Descriptive Statistics](#1-data-overview--descriptive-statistics)
-2. [OLS Univariate Analysis & Difference-of-Means](#2-ols-univariate-analysis--difference-of-means)
-3. [OLS with Control Variables](#3-ols-with-control-variables)
-4. [Causal Structure: Z → T → Y](#4-causal-structure-z--t--y)
-5. [Targeted Treatment & Confounding Bias](#5-targeted-treatment--confounding-bias)
-6. [Summary & Conclusions](#6-summary--conclusions)
+## 1. Data Overview
 
----
-
-## 1. Data Overview & Descriptive Statistics
-
-### Dataset
-This dataset contains **{N:,} simulated observations** of individual voters, designed to mimic a field experiment on voter mobilization (Gerber & Green). The key variables are:
+The dataset contains {N:,} observations from a simulated voter mobilization field experiment based on Gerber and Green (2000). The key variables are:
 
 | Variable | Type | Description |
 |----------|------|-------------|
-| `Y` | Binary | **Outcome**: 1 = voted, 0 = did not vote |
-| `Z` | Binary | **Random assignment**: 1 = assigned to canvassing, 0 = not assigned |
-| `T` | Binary | **Treatment received**: 1 = actually contacted, 0 = not contacted |
+| `Y` | Binary | Outcome: 1 = voted, 0 = did not vote |
+| `Z` | Binary | Random assignment: 1 = assigned to canvassing, 0 = not assigned |
+| `T` | Binary | Treatment received: 1 = actually contacted, 0 = not contacted |
 | `age` | Integer | Voter age |
 | `educ` | Integer | Years of education |
 | `pastvote` | Binary | Past turnout (1 = voted before, 0 = did not) |
 | `party_id` | Continuous | Partisan strength (higher = stronger partisan) |
 | `competitive` | Binary | District competitiveness (1 = competitive) |
 
-### Descriptive Statistics
+**Descriptive statistics:**
 
 {desc_stats.to_markdown()}
 
-### Key Rates
+**Key rates:**
 
 | Metric | Value |
 |--------|-------|
-| **Turnout rate** (Y = 1) | **{turnout_rate*100:.1f}%** |
-| **Assignment rate** (Z = 1) | **{assignment_rate*100:.1f}%** |
-| **Contact rate** (T = 1) | **{contact_rate*100:.1f}%** |
-| Contact rate among assigned (Z = 1) | {contact_Z1*100:.1f}% |
-| Contact rate among not assigned (Z = 0) | {contact_Z0*100:.1f}% |
-| **Compliance gap** (Z=1 minus Z=0) | **{compliance_gap*100:.1f} percentage points** |
+| Turnout rate (Y = 1) | {turnout_rate*100:.1f}% |
+| Assignment rate (Z = 1) | {assignment_rate*100:.1f}% |
+| Contact rate (T = 1) | {contact_rate*100:.1f}% |
+| Contact rate given Z = 1 | {contact_Z1*100:.1f}% |
+| Contact rate given Z = 0 | {contact_Z0*100:.1f}% |
+| Compliance gap | {compliance_gap*100:.1f} percentage points |
 
-> **Key observation**: Assignment (Z) strongly raises the probability of contact (T) — from
-> {contact_Z0*100:.1f}% to {contact_Z1*100:.1f}%, a gap of **{compliance_gap*100:.1f} pp**. However, because compliance
-> is imperfect (Z does not perfectly determine T), we have a classic **one-sided noncompliance**
-> experiment: some assigned voters are never contacted, and some non-assigned voters happen to
-> be contacted through other channels.
+Among those assigned to canvassing (Z = 1), {contact_Z1*100:.1f}% were actually contacted, compared to {contact_Z0*100:.1f}% among those not assigned (Z = 0), a compliance gap of {compliance_gap*100:.1f} pp. Compliance is imperfect in both directions: some assigned voters were never contacted (never-takers) and some non-assigned voters were contacted through other channels (always-takers). This is a case of **two-sided noncompliance**.
 
-![Figure 1: Descriptive Statistics](fig1_descriptive.png)
+![Figure 1](fig1_descriptive.png)
 
 ---
 
-## 2. OLS Univariate Analysis & Difference-of-Means
+## 2. OLS Univariate Analysis and Difference of Means
 
-### Difference-of-Means Test
+**Difference-of-means test:**
 
 | Group | N | Mean Turnout |
 |-------|---|-------------|
 | Not contacted (T = 0) | {len(grp0):,} | {grp0.mean()*100:.2f}% |
 | Contacted (T = 1) | {len(grp1):,} | {grp1.mean()*100:.2f}% |
-| **Difference** | — | **{dom*100:.2f} pp** |
+| Difference | - | {dom*100:.2f} pp |
 
-Two-sample t-test: *t* = {t_stat:.3f}, *p* {fmt_pval(p_val)}
+Two-sample t-test: t = {t_stat:.3f}, p {fmt_pval(p_val)}
 
-### OLS Regression: `reg Y T`
+**OLS regression: reg Y T**
 
-{reg_table_md(model1, 'OLS: Y ~ T')}
+{reg_table_md(model1)}
 
-### Margins: Predicted Probabilities at T = 0 and T = 1
-
-Using `margins at(T=(0 1))` (equivalent in Python: predicted values from the OLS model):
+**Margins: predicted probabilities at T = 0 and T = 1:**
 
 | | Value |
 |--|-------|
-| **P̂(Y = 1 \| T = 0)** | **{pred_T0:.4f}** ({pred_T0*100:.2f}%) |
-| **P̂(Y = 1 \| T = 1)** | **{pred_T1:.4f}** ({pred_T1*100:.2f}%) |
-| **Difference** | **{(pred_T1-pred_T0):.4f}** ({(pred_T1-pred_T0)*100:.2f} pp) |
-| OLS coefficient on T | {T1_coef:.4f} |
+| P(Y = 1 \\| T = 0) | {pred_T0:.4f} ({pred_T0*100:.2f}%) |
+| P(Y = 1 \\| T = 1) | {pred_T1:.4f} ({pred_T1*100:.2f}%) |
+| Difference | {(pred_T1-pred_T0):.4f} ({(pred_T1-pred_T0)*100:.2f} pp) |
 
-> **Interpretation**: The predicted probability of turnout for someone *not* contacted is
-> **{pred_T0*100:.1f}%**, and for someone contacted it is **{pred_T1*100:.1f}%**. The difference
-> ({(pred_T1-pred_T0)*100:.2f} pp) is **exactly equal to the OLS regression coefficient on T** ({T1_coef:.4f}).
-> This is not a coincidence: in an OLS linear probability model, the coefficient on a binary
-> predictor is always the difference in predicted means between the two groups. The `margins`
-> command in Stata, like computing predicted values at T=0 and T=1, recovers the same quantity.
+In a linear probability model (LPM), the coefficient on a binary treatment equals the difference in predicted means between the two groups. The difference in predicted probabilities ({(pred_T1-pred_T0)*100:.2f} pp) is exactly equal to the OLS coefficient on T ({T1_coef:.4f}). The `margins at(T=(0 1))` command in Stata recovers the same quantity as computing predicted values at T = 0 and T = 1 from the regression.
 
-![Figure 2: Univariate OLS](fig2_ols_univariate.png)
+![Figure 2](fig2_ols_univariate.png)
 
 ---
 
 ## 3. OLS with Control Variables
 
-### Regression: `reg Y T age educ pastvote party_id competitive`
+**Regression: reg Y T age educ pastvote party_id competitive**
 
 {reg_table_md(model2)}
 
-### Coefficient on T: With vs. Without Controls
+The coefficient on T changes from {T1_coef:.4f} to {T2_coef:.4f} when controls are added, a change of {change:+.4f} ({pct_change:.1f}%). This small change is expected: because T derives from random assignment Z, T is approximately uncorrelated with pre-treatment covariates. Adding controls in a randomized experiment primarily increases precision rather than correcting omitted-variable bias.
 
-| Model | T coefficient | Change |
-|-------|--------------|--------|
-| Univariate `reg Y T` | {T1_coef:.4f} | — |
-| With controls `reg Y T + X` | {T2_coef:.4f} | {change:+.4f} ({pct_change:.1f}% {'increase' if change > 0 else 'decrease'}) |
+In a linear probability model, the marginal effect of T equals the regression coefficient: **{T2_coef:.4f}**.
 
-> **Did the coefficient change a lot or a little?** The coefficient changed from **{T1_coef:.4f}**
-> to **{T2_coef:.4f}** — a change of **{change:+.4f}** ({pct_change:.1f}%). This is a very **small** change,
-> which is expected: because **Z was randomly assigned**, the treatment T is (approximately)
-> uncorrelated with the pre-treatment covariates. Adding controls in a randomized experiment
-> mainly increases precision (reduces standard errors) rather than removing omitted-variable bias.
-> The small change confirms that randomization successfully balanced covariates across treatment groups.
-
-### Marginal Effect of T
-
-In a linear probability model (OLS), the **marginal effect of T is simply the coefficient** on T:
-**ME(T) = {T2_coef:.4f}**
-
-| | Value |
-|--|-------|
-| Marginal effect of T (from model with controls) | **{T2_coef:.4f}** |
-| Raw difference in means (univariate) | {dom:.4f} |
-| Difference | {T2_coef - dom:+.4f} |
-
-> The marginal effect and the raw difference in means are very close ({T2_coef - dom:+.4f} apart),
-> again reflecting the balanced randomization.
-
-### Which Control Variable Has the Biggest Association with Y?
-
-Ranked by absolute t-statistic (the standard metric for relative importance within a regression):
+**Control variables ranked by absolute t-statistic:**
 
 | Variable | Coefficient | Std Err | t-statistic | p-value |
 |----------|------------|---------|-------------|---------|
 {chr(10).join(f'| **{v}** | {ctrl_info[v]["coef"]:.4f} | {ctrl_info[v]["se"]:.4f} | **{ctrl_info[v]["t"]:.2f}** | {fmt_pval(ctrl_info[v]["p"])} |' for v in sorted_by_t)}
 
-> **`{biggest_confounder}`** has the largest absolute t-statistic (**|t| = {abs(ctrl_info[biggest_confounder]['t']):.2f}**),
-> indicating it has the strongest marginal association with turnout Y after controlling for all
-> other variables. You can read this directly from the regression output: the variable with
-> the largest |t| (or equivalently the smallest p-value) is the most influential predictor.
+**`{biggest_confounder}`** has the largest absolute t-statistic (|t| = {abs(ctrl_info[biggest_confounder]['t']):.2f}), indicating the strongest marginal association with turnout after controlling for all other variables.
 
-![Figure 3: OLS with Controls](fig3_controls.png)
+![Figure 3](fig3_controls.png)
 
-![Figure 4: Covariate Associations](fig4_covariates.png)
+![Figure 4](fig4_covariates.png)
 
 ---
 
-## 4. Causal Structure: Z → T → Y
+## 4. Causal Structure: Z -> T -> Y
 
-The full causal structure is:
-
-```
-Z (random assignment) ──→ T (actual contact) ──→ Y (turnout)
-         ↓                        ↑
-         └──── X (covariates) ────┘
-```
-
-This involves **three equations**:
-
-### First Stage: `reg T ~ Z + covariates`
-
-*Does random assignment (Z) actually increase contact (T)?*
+**First stage: reg T ~ Z + covariates**
 
 {reg_table_md(fs_model)}
 
-> **Z coefficient = {FS_coef:.4f}** (t = {FS_t:.3f}, p < 0.001).
-> Being randomly assigned raises the probability of contact by **{FS_coef*100:.1f} pp**.
-> This is the **first stage** of an instrumental variables design.
-> The F-statistic for Z is well above 10, confirming Z is a **strong instrument**.
+The Z coefficient ({FS_coef:.4f}, t = {FS_t:.3f}, p < 0.001) shows that random assignment raises the probability of contact by {FS_coef*100:.1f} pp. The instrument is strong (F-statistic well above 10).
 
-### Reduced Form (Intention-to-Treat): `reg Y ~ Z + covariates`
-
-*What is the causal effect of being **assigned** (regardless of actual contact)?*
+**Reduced form (ITT): reg Y ~ Z + covariates**
 
 {reg_table_md(rf_model)}
 
-> **Z coefficient = {ITT_coef:.4f}** — this is the **Intention-to-Treat (ITT) effect**.
-> Random assignment raises turnout by **{ITT_coef*100:.1f} pp** on average across all assigned voters,
-> including those who were never actually contacted.
+The Z coefficient ({ITT_coef:.4f}) is the Intention-to-Treat (ITT) effect: the average effect of being assigned to canvassing across all assigned voters, including those never actually contacted. The ITT is not statistically significant (p = {fmt_pval(rf_model.pvalues['Z'])}).
 
-### 2SLS / IV Estimate (LATE)
-
-Using Z as an instrument for T (2SLS via `linearmodels`):
+**2SLS / IV estimate (LATE):**
 
 | Estimator | Estimate | Std Err | t-stat | p-value |
 |-----------|----------|---------|--------|---------|
-| ITT (reduced form) | {ITT_coef:.4f} | {ITT_se:.4f} | {ITT_t:.3f} | < 0.001 |
-| First stage (Z→T) | {FS_coef:.4f} | {FS_se:.4f} | {FS_t:.3f} | < 0.001 |
-| **LATE = ITT / FS** | **{LATE_man:.4f}** | — | — | — |
-| **2SLS estimate** | **{LATE_2sls:.4f}** | {LATE_2sls_se:.4f} | {LATE_2sls_t:.3f} | {fmt_pval(LATE_2sls_p)} |
-| OLS (T→Y, with ctrl) | {T2_coef:.4f} | {T2_se:.4f} | {T2_t:.3f} | < 0.001 |
+| ITT (reduced form) | {ITT_coef:.4f} | {ITT_se:.4f} | {ITT_t:.3f} | {fmt_pval(rf_model.pvalues['Z'])} |
+| First stage (Z->T) | {FS_coef:.4f} | {FS_se:.4f} | {FS_t:.3f} | < 0.001 |
+| LATE = ITT / FS | {LATE_man:.4f} | - | - | - |
+| 2SLS estimate | {LATE_2sls:.4f} | {LATE_2sls_se:.4f} | {LATE_2sls_t:.3f} | {fmt_pval(LATE_2sls_p)} |
+| OLS (T->Y, with controls) | {T2_coef:.4f} | {T2_se:.4f} | {T2_t:.3f} | {fmt_pval(T2_p)} |
 
-> **LATE = ITT / First Stage = {ITT_coef:.4f} / {FS_coef:.4f} = {LATE_man:.4f}**
-> (matches 2SLS: {LATE_2sls:.4f} ✓)
+LATE = ITT / First Stage = {ITT_coef:.4f} / {FS_coef:.4f} = {LATE_man:.4f}, which matches the 2SLS estimate ({LATE_2sls:.4f}).
 
-### What Does This Model Help Us Infer?
+Neither the ITT ({ITT_coef:.4f}, p = {fmt_pval(rf_model.pvalues['Z'])}) nor the LATE ({LATE_2sls:.4f}, p = {fmt_pval(LATE_2sls_p)}) reaches statistical significance at conventional levels. The OLS estimate ({T2_coef:.4f}) is statistically significant but reflects selection: contacted voters differ from non-contacted voters in ways that predict turnout independently of canvassing.
 
-This causal structure — with Z as a **randomized instrument**, T as the **endogenous treatment**,
-and Y as the **outcome** — allows us to answer several distinct questions:
+The causal structure separates three estimands:
 
-| Question | Estimand | Answer |
-|----------|----------|--------|
-| Effect of *being assigned* to canvassing (regardless of contact) | **ITT** | {ITT_coef:.4f} ({ITT_coef*100:.1f} pp) |
-| Effect of *actual contact* on turnout, for those who comply | **LATE (2SLS)** | {LATE_2sls:.4f} ({LATE_2sls*100:.1f} pp) |
-| Association of contact with turnout (controlling for X) | **OLS** | {T2_coef:.4f} |
+| Question | Estimand | Estimate |
+|----------|----------|----------|
+| Effect of being assigned to canvassing | ITT | {ITT_coef:.4f} |
+| Effect of actual contact for compliers | LATE (2SLS) | {LATE_2sls:.4f} |
+| Association of contact with turnout (with controls) | OLS | {T2_coef:.4f} |
 
-**Direct and Indirect Effects:**
-- **Direct effect of Z on Y**: Because Z was randomly assigned and its only channel to Y is *through T*
-  (the exclusion restriction), Z has **no direct effect** on Y — it only operates *indirectly* through T.
-- **Indirect (mediated) path**: Z → T → Y. The ITT ({ITT_coef:.4f}) captures this full path.
-  Dividing by the first stage ({FS_coef:.4f}) scales up to the LATE ({LATE_2sls:.4f}), which is the
-  average treatment effect for **compliers** (voters who are contacted if and only if assigned).
-- **Covariate paths**: X affects both T (selection into compliance) and Y (baseline turnout rates),
-  but because Z is random and independent of X, we can condition on X without introducing bias.
+Z affects Y only through T (exclusion restriction). The ITT ({ITT_coef:.4f}) captures the path Z -> T -> Y. Dividing by the first stage ({FS_coef:.4f}) rescales to the LATE ({LATE_2sls:.4f}), which is the average treatment effect for compliers only.
 
-> **Bottom line**: The 2SLS estimate ({LATE_2sls:.4f}) is the cleanest causal estimate of "how much
-> does being contacted increase the probability of voting?" for the subset of voters whose
-> contact status was actually changed by the random assignment (the Local Average Treatment Effect).
-
-![Figure 5: Causal Structure](fig5_causal.png)
+![Figure 5](fig5_causal.png)
 
 ---
 
-## 5. Targeted Treatment & Confounding Bias
+## 5. Targeted Treatment and Confounding Bias
 
-### Generating the Targeted Treatment
+A non-random targeted treatment indicator is generated as:
 
-```stata
-gen T_target = (runiform() < invlogit(-1 + 1.2*pastvote + 0.5*party_id))
+```python
+T_target = (runiform() < invlogit(-1 + 1.2*pastvote + 0.5*party_id))
 ```
 
-This creates a **non-random, observational treatment indicator**: voters are more likely to be
-"treated" if they have voted before (`pastvote`) and have stronger partisan identity (`party_id`).
-Both of these characteristics also independently predict higher turnout (Y).
+Voters with prior voting history and stronger partisan identity are more likely to be targeted. Both characteristics also independently predict higher turnout, creating confounding.
 
 T_target rate: **{T_target_rate*100:.1f}%**
 
-### Contact Rate by Past Vote (tab T_target pastvote, row)
+**Contact rate by past vote (tab T_target pastvote, row):**
 
 {tab_row.to_markdown()}
 
-> Voters who voted in the past are **much more likely** to receive the targeted treatment:
-> {tab_row.loc[1,1]:.1f}% vs. {tab_row.loc[0,1]:.1f}% among non-past voters.
-> This creates confounding: T_target is correlated with pastvote, and pastvote predicts Y.
+Voters who previously voted are far more likely to receive the targeted treatment ({tab_row.loc[1,1]:.1f}% vs. {tab_row.loc[0,1]:.1f}%), creating a direct correlation between T_target and Y through pastvote.
 
-### Regression Results
-
-**Without controls** (`reg Y T_target`):
+**Regression without controls: reg Y T_target**
 
 {reg_table_md(model_obs1)}
 
-**With controls** (`reg Y T_target + age educ pastvote party_id competitive`):
+**Regression with controls: reg Y T_target age educ pastvote party_id competitive**
 
 {reg_table_md(model_obs2)}
 
-### Coefficient Comparison
+**Coefficient comparison:**
 
 | Model | Coefficient on Treatment | Notes |
 |-------|------------------------|-------|
-| T experimental (no controls) | {T1_coef:.4f} | Random assignment — unbiased |
-| **T_target (no controls)** | **{Tt_nc:.4f}** | **Biased upward by confounding** |
-| T_target (with controls) | {Tt_wc:.4f} | Partially corrected |
+| T experimental (no controls) | {T1_coef:.4f} | Random assignment - unbiased |
+| T_target (no controls) | {Tt_nc:.4f} | Biased upward by confounding |
+| T_target (with controls) | {Tt_wc:.4f} | Effect disappears; sign reverses |
 
-**Bias magnitudes:**
-- T_target without controls is **{Tt_nc - Tt_wc:.4f} higher** than with controls (downward bias correction when adding controls)
-- T_target without controls is **{Tt_nc - T1_coef:.4f} higher** than the experimental T estimate
+When controls are added, the T_target coefficient drops from {Tt_nc:.4f} to {Tt_wc:.4f}: the estimated effect reverses sign and becomes statistically insignificant, indicating the apparent treatment effect was entirely due to confounding by pre-existing characteristics. The experimental T estimate ({T1_coef:.4f}) is unbiased because random assignment ensures T is uncorrelated with confounders.
 
-> **Which is more biased?** `T_target` without controls (**{Tt_nc:.4f}**) is far more biased than
-> the experimental `T` without controls (**{T1_coef:.4f}**). The experimental T estimate is
-> unbiased because random assignment ensures Z (and hence T) is uncorrelated with all
-> confounders. The T_target estimate inflates the apparent treatment effect because
-> targeted voters would have voted at higher rates *anyway* — the treatment didn't cause their
-> high turnout, their pre-existing characteristics did.
+**What drives the confounding?**
 
-### Which Variable Is Doing the Most Confounding?
-
-Running `reg T_target ~ pastvote party_id age educ competitive` to see what predicts T_target:
-
-| Variable | T_target coefficient | Y coefficient (model2) | Confounder? |
-|----------|---------------------|----------------------|-------------|
-| **pastvote** | **{conf_check.params['pastvote']:.4f}** | **{ctrl_info['pastvote']['coef']:.4f}** | **YES — strong** |
+| Variable | T_target coefficient | Y coefficient | Confounder? |
+|----------|---------------------|---------------|-------------|
+| pastvote | {conf_check.params['pastvote']:.4f} | {ctrl_info['pastvote']['coef']:.4f} | Yes - strong |
 | party_id | {conf_check.params['party_id']:.4f} | {ctrl_info['party_id']['coef']:.4f} | Moderate |
-| age | {conf_check.params['age']:.4f} | {ctrl_info['age']['coef']:.4f} | Weak/none |
+| age | {conf_check.params['age']:.4f} | {ctrl_info['age']['coef']:.4f} | Negligible |
 
-> **`pastvote` is the primary confounder.** You can see this because:
-> 1. It strongly predicts T_target (by construction: coefficient of **1.2** in the logit formula)
-> 2. It is the strongest predictor of Y in the outcome regression (largest |t|: **{abs(ctrl_info['pastvote']['t']):.2f}**)
->
-> When you add controls, the T_target coefficient falls from **{Tt_nc:.4f}** to **{Tt_wc:.4f}**
-> (a drop of **{Tt_nc - Tt_wc:.4f}**), and most of that drop comes from controlling for pastvote,
-> which "absorbs" the spurious correlation between T_target and Y that was previously
-> attributed to the treatment.
+**pastvote** is the primary confounder: it strongly predicts T_target (coefficient of 1.2 in the logit formula by construction) and is the strongest predictor of Y among all covariates (|t| = {abs(ctrl_info['pastvote']['t']):.2f} in the outcome regression).
 
-![Figure 6: Targeted Treatment](fig6_targeted.png)
+![Figure 6](fig6_targeted.png)
 
 ---
 
-## 6. Summary & Conclusions
+## 6. Summary
 
-### All Estimates Side-by-Side
-
-| Estimator | Coefficient | Interpretation |
-|-----------|------------|----------------|
-| Diff-of-means: E[Y\|T=1] − E[Y\|T=0] | {dom:.4f} | Raw association |
-| OLS: reg Y T (univariate) | {T1_coef:.4f} | = diff-of-means (by construction) |
+| Estimator | Coefficient | Notes |
+|-----------|------------|-------|
+| Diff-of-means: E[Y\\|T=1] - E[Y\\|T=0] | {dom:.4f} | Raw association |
+| OLS: reg Y T | {T1_coef:.4f} | Equal to diff-of-means |
 | OLS: reg Y T + controls | {T2_coef:.4f} | Controlled association |
-| ITT: Z effect on Y (reduced form) | {ITT_coef:.4f} | Intent-to-treat |
-| LATE (2SLS): Z instruments T→Y | {LATE_2sls:.4f} | Causal effect for compliers |
-| T_target (no controls) | {Tt_nc:.4f} | **Biased (OVB)** |
-| T_target (with controls) | {Tt_wc:.4f} | Partially corrected |
-
-### Key Takeaways
-
-1. **Randomization works**: Adding controls barely changes the experimental T coefficient
-   ({change:+.4f}, {pct_change:.1f}%), confirming that Z created balanced treatment groups.
-
-2. **Margins = OLS coefficient**: In a linear probability model, the predicted probability
-   difference from `margins at(T=(0 1))` equals the OLS coefficient exactly.
-
-3. **Past vote is the key predictor of turnout**: Among all covariates, `{biggest_confounder}`
-   has the largest t-statistic (|t| = {abs(ctrl_info[biggest_confounder]['t']):.2f}), dominating
-   the prediction of Y.
-
-4. **The causal chain Z → T → Y separates ITT from LATE**:
-   - ITT = {ITT_coef:.4f}: the average effect of being assigned (diluted by non-compliance)
-   - LATE = {LATE_2sls:.4f}: the effect for compliers only (larger because it excludes
-     never-takers and always-takers)
-
-5. **Targeted treatment introduces confounding bias**: Without controls, T_target overstates
-   the treatment effect by **{Tt_nc - T1_coef:.4f}** compared to the experimental benchmark.
-   The primary confounder is **past vote**, which simultaneously predicts selection into
-   treatment (by construction) and the outcome (turnout).
+| ITT (Z->Y, reduced form) | {ITT_coef:.4f} | p = {fmt_pval(rf_model.pvalues['Z'])} (not significant) |
+| LATE (2SLS) | {LATE_2sls:.4f} | p = {fmt_pval(LATE_2sls_p)} (not significant) |
+| T_target (no controls) | {Tt_nc:.4f} | Biased by confounding |
+| T_target (with controls) | {Tt_wc:.4f} | Effect disappears |
 
 ---
 
-*Analysis conducted in Python using `pandas`, `statsmodels`, `scipy`, `linearmodels`, `matplotlib`, and `seaborn`.*
-*Dataset: `gg_fake.dta` — 5,000 simulated observations (teaching dataset).*
+*Analysis conducted in Python using pandas, statsmodels, scipy, linearmodels, matplotlib, and seaborn.*
+*Dataset: gg_fake.dta - 5,000 simulated observations (teaching dataset).*
 """
 
 with open(DIR + 'INTL601_Exercise1_Report.md', 'w') as f:
